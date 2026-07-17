@@ -1,4 +1,4 @@
-<!-- Desktop: สลับ dark/light อัตโนมัติตามธีมของคนดู -->
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/hhtttd-beach-console-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="./assets/hhtttd-beach-console-light.svg">
