@@ -16,3 +16,6 @@
 [![GitHub](https://img.shields.io/badge/GitHub-HHTTTD-181717?style=for-the-badge&logo=github)](https://github.com/HHTTTD)
 
 <sub><code>signal.locked &gt; WEB / JS / VACATION MODE</code> — built between beach breaks 🏖️</sub>
+
+
+<picture> <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HHTTTD/HHTTTD/output/github-snake-dark.svg" /> <img alt="github contribution snake" src="https://raw.githubusercontent.com/HHTTTD/HHTTTD/output/github-snake.svg" /> </picture>
