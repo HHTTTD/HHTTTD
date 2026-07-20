@@ -55,8 +55,16 @@ jobs:
               dayW, monthH = 32, 20
               gx, gy = padL + dayW, padT + monthH          # grid origin inside the card
               has_bar = 'class="u ' in svg                 # snk progress bar (moved up from y=144)
-              svg = svg.replace(' y="144"', ' y="124"')
-              barY, barH = gy + 124, 12
+              barH = 8
+              svg = svg.replace(' y="144"', ' y="126"')
+              svg = re.sub(r'(<rect class="u [^>]*?)height="12"', r'\1height="8"', svg)
+              barY = gy + 126
+              if has_bar:                                  # clip the fill segments to a rounded pill
+                  svg = re.sub(r'(<rect class="u u[^>]*/>(?:<rect class="u u[^>]*/>)*)',
+                               r'<g clip-path="url(#snkpill)">\1</g>', svg, count=1)
+                  svg = svg.replace('</svg>',
+                      f'<clipPath id="snkpill" clipPathUnits="userSpaceOnUse">'
+                      f'<rect x="0" y="126" width="{grid_w - 2}" height="8" rx="4"/></clipPath></svg>')
               footer_base = (barY + barH + 24) if has_bar else (gy + grid_h + 26)
               W = gx + grid_w + padR
               H = footer_base + 12
@@ -83,7 +91,7 @@ jobs:
 
               # track behind the progress bar, so partial progress looks intentional
               if has_bar:
-                  parts.append(f'<rect x="{gx}" y="{barY}" width="{grid_w - 2}" height="{barH}" rx="2" fill="{t["legend"][0]}"/>')
+                  parts.append(f'<rect x="{gx}" y="{barY}" width="{grid_w - 2}" height="{barH}" rx="4" fill="{t["legend"][0]}"/>')
 
               # the snake svg, positioned so its grid lands exactly at (gx, gy)
               inner = re.sub(r"<svg ", f'<svg x="{gx + vx}" y="{gy + vy}" ', svg, count=1)
