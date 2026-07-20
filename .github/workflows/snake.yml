@@ -23,7 +23,7 @@ jobs:
       - name: Wrap snake in GitHub-style contribution card
         run: |
           cat > wrap_snake.py << 'PYEOF'
-          import re, sys, datetime
+          import re, datetime
 
           CELL = 16
 
@@ -40,6 +40,7 @@ jobs:
               t = THEMES[theme_name]
               svg = open(path, encoding="utf-8").read()
 
+              # grid geometry from the snk svg itself
               cells = re.findall(r'<rect class="c[ "][^>]*?x="(-?\d+)" y="(-?\d+)"', svg)
               xs = sorted({int(x) for x, y in cells})
               ys = sorted({int(y) for x, y in cells if int(y) <= 110})
@@ -49,13 +50,18 @@ jobs:
               vb = re.search(r'viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"', svg)
               vx, vy, vw, vh = (float(v) for v in vb.groups())
 
+              # layout
               padL, padR, padT = 16, 16, 12
               dayW, monthH = 32, 20
-              gx, gy = padL + dayW, padT + monthH
-              footer_base = gy + grid_h + 26
+              gx, gy = padL + dayW, padT + monthH          # grid origin inside the card
+              has_bar = 'class="u ' in svg                 # snk progress bar (moved up from y=144)
+              svg = svg.replace(' y="144"', ' y="124"')
+              barY, barH = gy + 124, 12
+              footer_base = (barY + barH + 24) if has_bar else (gy + grid_h + 26)
               W = gx + grid_w + padR
               H = footer_base + 12
 
+              # month labels (GitHub weeks start on Sunday, last column = current week)
               today = datetime.date.today()
               week0 = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
               labels, prev = [], None
@@ -65,7 +71,7 @@ jobs:
                       labels.append((c, MONTHS[d.month - 1]))
                       prev = d.month
               if len(labels) > 1 and labels[1][0] - labels[0][0] < 3:
-                  labels = labels[1:]
+                  labels = labels[1:]                       # avoid overlap at left edge
 
               font = "-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif"
               T = lambda x, y, s, anchor="start", fill=None: (
@@ -75,10 +81,16 @@ jobs:
               parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">']
               parts.append(f'<rect x="0.5" y="0.5" width="{W-1}" height="{H-1}" rx="6" fill="{t["bg"]}" stroke="{t["border"]}"/>')
 
+              # track behind the progress bar, so partial progress looks intentional
+              if has_bar:
+                  parts.append(f'<rect x="{gx}" y="{barY}" width="{grid_w - 2}" height="{barH}" rx="2" fill="{t["legend"][0]}"/>')
+
+              # the snake svg, positioned so its grid lands exactly at (gx, gy)
               inner = re.sub(r"<svg ", f'<svg x="{gx + vx}" y="{gy + vy}" ', svg, count=1)
               inner = re.sub(r"<\?xml[^>]*\?>", "", inner)
               parts.append(inner)
 
+              # labels drawn after, so the roaming snake passes under them
               for c, name in labels:
                   parts.append(T(gx + c * CELL + 2, padT + 14, name))
               for row, name in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
