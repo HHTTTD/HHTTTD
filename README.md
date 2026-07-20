@@ -5,6 +5,12 @@
   <img alt="Sitthisak (HHTTTD) — Web Developer" src="./assets/hhtttd-beach-console-light.svg" width="100%">
 </picture>
 
+<br /><br />
+
+<!-- Full stack --> <img src="https://skillicons.dev/icons?i=js,ts,html,css,react,nextjs,tailwind,nodejs,git,vscode&theme=dark" alt="Tech Stack" /> </div>
+
+---
+
 ### Connect
 
 [![GitHub](https://img.shields.io/badge/GitHub-HHTTTD-181717?style=for-the-badge&logo=github)](https://github.com/HHTTTD)
