@@ -59,7 +59,7 @@ jobs:
               barY, barH = gy + 124, 12
               footer_base = (barY + barH + 24) if has_bar else (gy + grid_h + 26)
               W = gx + grid_w + padR
-              H = footer_base + 32
+              H = footer_base + 20
 
               # month labels (GitHub weeks start on Sunday, last column = current week)
               today = datetime.date.today()
