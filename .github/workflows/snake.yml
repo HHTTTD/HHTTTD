@@ -20,6 +20,86 @@ jobs:
             dist/github-snake.svg?color_snake=#216e39&color_dots=#ebedf0,#9be9a8,#40c463,#30a14e,#216e39
             dist/github-snake-dark.svg?palette=github-dark&color_snake=#39d353&color_dots=#161b22,#0e4429,#006d32,#26a641,#39d353
 
+      - name: Wrap snake in GitHub-style contribution card
+        run: |
+          cat > wrap_snake.py << 'PYEOF'
+          import re, sys, datetime
+
+          CELL = 16
+
+          THEMES = {
+              "light": dict(bg="#ffffff", border="#d1d9e0", text="#1f2328", muted="#59636e",
+                            legend=["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]),
+              "dark":  dict(bg="#0d1117", border="#3d444d", text="#f0f6fc", muted="#9198a1",
+                            legend=["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"]),
+          }
+
+          MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+          def wrap(path, theme_name):
+              t = THEMES[theme_name]
+              svg = open(path, encoding="utf-8").read()
+
+              cells = re.findall(r'<rect class="c[ "][^>]*?x="(-?\d+)" y="(-?\d+)"', svg)
+              xs = sorted({int(x) for x, y in cells})
+              ys = sorted({int(y) for x, y in cells if int(y) <= 110})
+              ncols, nrows = len(xs), len(ys)
+              grid_w, grid_h = ncols * CELL, nrows * CELL
+
+              vb = re.search(r'viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"', svg)
+              vx, vy, vw, vh = (float(v) for v in vb.groups())
+
+              padL, padR, padT = 16, 16, 12
+              dayW, monthH = 32, 20
+              gx, gy = padL + dayW, padT + monthH
+              footer_base = gy + grid_h + 26
+              W = gx + grid_w + padR
+              H = footer_base + 12
+
+              today = datetime.date.today()
+              week0 = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+              labels, prev = [], None
+              for c in range(ncols):
+                  d = week0 - datetime.timedelta(weeks=ncols - 1 - c)
+                  if d.month != prev:
+                      labels.append((c, MONTHS[d.month - 1]))
+                      prev = d.month
+              if len(labels) > 1 and labels[1][0] - labels[0][0] < 3:
+                  labels = labels[1:]
+
+              font = "-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif"
+              T = lambda x, y, s, anchor="start", fill=None: (
+                  f'<text x="{x}" y="{y}" fill="{fill or t["text"]}" font-family="{font}" '
+                  f'font-size="12" text-anchor="{anchor}">{s}</text>')
+
+              parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">']
+              parts.append(f'<rect x="0.5" y="0.5" width="{W-1}" height="{H-1}" rx="6" fill="{t["bg"]}" stroke="{t["border"]}"/>')
+
+              inner = re.sub(r"<svg ", f'<svg x="{gx + vx}" y="{gy + vy}" ', svg, count=1)
+              inner = re.sub(r"<\?xml[^>]*\?>", "", inner)
+              parts.append(inner)
+
+              for c, name in labels:
+                  parts.append(T(gx + c * CELL + 2, padT + 14, name))
+              for row, name in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
+                  parts.append(T(padL, gy + row * CELL + 12, name))
+
+              parts.append(T(gx + 2, footer_base, "Learn how we count contributions", fill=t["muted"]))
+              lx = W - padR - 40
+              parts.append(T(lx - 5 * 15 - 8, footer_base, "Less", anchor="end", fill=t["muted"]))
+              for i, c in enumerate(t["legend"]):
+                  parts.append(f'<rect x="{lx - (5 - i) * 15}" y="{footer_base - 10}" width="11" height="11" rx="2" fill="{c}"/>')
+              parts.append(T(lx + 4, footer_base, "More", fill=t["muted"]))
+              parts.append("</svg>")
+
+              open(path, "w", encoding="utf-8").write("".join(parts))
+              print(f"wrapped {path} ({theme_name}): {ncols}x{nrows} grid -> {W}x{H}")
+
+          wrap("dist/github-snake.svg", "light")
+          wrap("dist/github-snake-dark.svg", "dark")
+          PYEOF
+          python3 wrap_snake.py
+
       - uses: crazy-max/ghaction-github-pages@v4
         with:
           target_branch: output
