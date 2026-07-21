@@ -27,6 +27,70 @@ jobs:
 
           CELL = 16
 
+          # --- growing snake ---------------------------------------------------
+          # snk always renders a fixed 4-cell snake and solves the whole path for
+          # that length, so a *true* per-dot growth (which would change collisions)
+          # is not possible without re-solving. Instead we extend the tail with
+          # extra trailing segments and reveal them progressively, so the snake
+          # visually grows from short to long as it travels and eats dots.
+          GROW_TO       = 24     # total snake length after growth (>= 4). Set to 4 to disable.
+          STEP_MS       = 100    # snk's default per-step duration
+          GROW_COMPLETE = 0.85   # fraction of the loop at which full length is reached
+          FADE          = 0.9    # fade-in width of each new segment, in "steps"
+
+          def grow_snake(svg):
+              dm = re.search(r'\.s\{[^}]*?animation:\s*none\s+linear\s+(\d+)ms', svg)
+              if not dm:
+                  return svg
+              dur = int(dm.group(1))
+              step_frac = STEP_MS / dur
+
+              seg = sorted(int(i) for i in re.findall(r'\.s\.s(\d+)\{', svg))
+              if not seg:
+                  return svg
+              last = seg[-1]                       # highest existing segment index (3)
+              L = max(GROW_TO, last + 1)           # total segments after growth
+              if L <= last + 1:
+                  return svg                       # nothing to add
+
+              # template for a tail cell = the last existing segment's rect
+              tail_rect = re.search(r'<rect class="s s%d"[^>]*?/>' % last, svg).group(0)
+              start_tr  = re.search(
+                  r'\.s\.s%d\{transform:(translate\([^)]*\));animation-name:s%d\}' % (last, last),
+                  svg).group(1)
+
+              # extra trailing segments: reuse the last segment's path, phase-shifted
+              # one more game-step per segment (negative delay = shift without a hold)
+              extra_css, extra_rects = [], []
+              for j in range(last + 1, L):
+                  k = j - last
+                  delay = k * STEP_MS - dur
+                  extra_css.append(
+                      '.s.s%d{transform:%s;animation-name:s%d;animation-delay:%dms}'
+                      % (j, start_tr, last, delay))
+                  extra_rects.append(
+                      tail_rect.replace('class="s s%d"' % last, 'class="s s%d"' % j))
+
+              # progressive reveal: wrap every snake cell in a <g> that fades it in
+              reveal_css = ['.sg{animation:none linear %dms infinite}' % dur]
+              for i in range(L):
+                  p = (i / (L - 1)) * GROW_COMPLETE if L > 1 else 0
+                  a = round(p * 100, 2)
+                  b = round((p + FADE * step_frac) * 100, 2)
+                  if i == 0:
+                      reveal_css.append('@keyframes rv0{0%,100%{opacity:1}}')
+                  else:
+                      reveal_css.append(
+                          '@keyframes rv%d{0%%,%s%%{opacity:0}%s%%,100%%{opacity:1}}' % (i, a, b))
+                  reveal_css.append('.sg.sg%d{opacity:0;animation-name:rv%d}' % (i, i))
+
+              svg = svg.replace('</style>', ''.join(extra_css) + ''.join(reveal_css) + '</style>', 1)
+              svg = svg.replace(tail_rect, tail_rect + ''.join(extra_rects), 1)
+              svg = re.sub(r'<rect class="s s(\d+)"[^>]*?/>',
+                           lambda m: '<g class="sg sg%s">%s</g>' % (m.group(1), m.group(0)), svg)
+              return svg
+          # ---------------------------------------------------------------------
+
           THEMES = {
               "light": dict(bg="#ffffff", border="#d1d9e0", text="#1f2328", muted="#59636e",
                             legend=["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]),
@@ -39,6 +103,7 @@ jobs:
           def wrap(path, theme_name):
               t = THEMES[theme_name]
               svg = open(path, encoding="utf-8").read()
+              svg = grow_snake(svg)                        # make the snake grow as it eats
 
               # grid geometry from the snk svg itself
               cells = re.findall(r'<rect class="c[ "][^>]*?x="(-?\d+)" y="(-?\d+)"', svg)
